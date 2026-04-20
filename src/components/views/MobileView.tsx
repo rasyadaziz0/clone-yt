@@ -23,7 +23,7 @@ export default function MobileView({
       className={`flex h-full overflow-hidden relative ${
         isFullscreen
           ? 'flex-col landscape:flex-row p-0 gap-0 bg-black'
-          : 'flex-col p-3 gap-3'
+          : 'flex-col p-2.5 gap-2.5 bg-background'
       }`}
       ref={wrapperRef as RefObject<HTMLDivElement>}
     >
@@ -35,14 +35,14 @@ export default function MobileView({
         className={`relative flex flex-col scroll-smooth ${
           isFullscreen
             ? 'flex-1 min-h-0 p-0 mb-0 pr-0 gap-0 rounded-none overflow-hidden'
-            : 'flex-grow overflow-y-auto rounded-xl pr-2 gap-2 pb-4'
+            : 'flex-grow overflow-y-auto pr-1 gap-2 pb-4'
         }`}
       >
           <div
             className={`relative w-full flex items-center justify-center bg-black overflow-hidden ${
               isFullscreen
                 ? 'flex-1 h-full min-h-0 rounded-none border-none shadow-none'
-                : 'shrink-0 shadow-lg rounded-xl overflow-hidden aspect-video min-h-[30vh]'
+                : 'shrink-0 border border-border rounded-lg overflow-hidden aspect-video min-h-[30vh]'
             }`}
           >
           <div className="absolute top-4 left-4 z-50 pointer-events-none">
@@ -68,7 +68,7 @@ export default function MobileView({
           className={`flex flex-col ${
             isFullscreen
               ? 'w-full h-[40vh] min-h-[200px] landscape:h-full landscape:w-[280px] landscape:min-h-0 rounded-none border-none z-50 bg-black/95'
-              : 'shrink-0 w-full h-[280px] overflow-hidden rounded-xl shadow-lg'
+              : 'shrink-0 w-full h-[280px] overflow-hidden rounded-lg border border-border bg-card'
           }`}
         >
           <LiveChat

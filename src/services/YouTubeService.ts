@@ -117,9 +117,29 @@ export class YouTubeService {
         });
 
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Detail Error YouTube API:", errorData);
-            throw new Error(errorData.error?.message || "Gagal mengirim pesan");
+            let parsedBody: any = null;
+            let rawBody = '';
+
+            try {
+                rawBody = await response.text();
+                parsedBody = rawBody ? JSON.parse(rawBody) : null;
+            } catch {
+                parsedBody = null;
+            }
+
+            const errorMessage =
+                parsedBody?.error?.message ||
+                (rawBody && rawBody.trim().length > 0 ? rawBody : null) ||
+                `HTTP ${response.status} ${response.statusText}`;
+
+            console.error("Detail Error YouTube API:", {
+                status: response.status,
+                statusText: response.statusText,
+                url: `${this.baseUrl}/liveChat/messages?part=snippet`,
+                body: parsedBody ?? rawBody ?? '(empty body)'
+            });
+
+            throw new Error(`Gagal mengirim pesan ke YouTube: ${errorMessage}`);
         }
     }
 }

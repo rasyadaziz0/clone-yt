@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-const DRIP_DELAY_HIGH = 100;   // Queue > 10 messages
-const DRIP_DELAY_MEDIUM = 200; // Queue > 5 messages
-const DRIP_DELAY_LOW = 300;    // Queue <= 5 messages
-const DRIP_CHECK_INTERVAL = 1000; // 1 detik
+const DRIP_CHECK_INTERVAL = 80;
 const MAX_VISIBLE_MESSAGES = 200;
 const REPLAY_SYNC_INTERVAL = 500; // 500ms
 
@@ -84,7 +81,7 @@ export function useChatRenderer(
                 return;
             }
 
-            // Ambil 1-2 pesan per batch untuk aliran smooth
+            // Ambil 1-2 pesan per batch, tapi tetap responsif.
             const batchSize = Math.min(
                 messageQueue.current.length > 5 ? 2 : 1,
                 messageQueue.current.length
@@ -94,19 +91,19 @@ export function useChatRenderer(
             addToVisibleMessages(messages);
 
             // Delay adaptive: lebih cepat kalau queue banyak
-            const delay = messageQueue.current.length > 8 ? 80 : 
-                         messageQueue.current.length > 3 ? 150 : 250;
+            const delay = messageQueue.current.length > 8 ? 40 :
+                         messageQueue.current.length > 3 ? 70 : 100;
             
             drainTimeout = setTimeout(drainNext, delay);
         };
 
-        // Check queue setiap 200ms
+        // Check queue lebih cepat agar pesan baru tidak terasa telat.
         const checkerInterval = setInterval(() => {
             if (messageQueue.current.length > 0 && !isDraining) {
                 isDraining = true;
                 drainNext();
             }
-        }, 200);
+        }, DRIP_CHECK_INTERVAL);
 
         return () => {
             clearInterval(checkerInterval);

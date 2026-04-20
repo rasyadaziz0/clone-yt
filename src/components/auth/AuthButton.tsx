@@ -65,7 +65,7 @@ export default function AuthButton() {
 
   if (isUserLoading) {
     return (
-      <Button variant="ghost" size="icon" disabled className="rounded-full bg-muted/50 border border-border h-9 w-9 md:h-10 md:w-10">
+      <Button variant="ghost" size="icon" disabled className="rounded-full bg-muted border border-border h-9 w-9 md:h-10 md:w-10">
         <Loader2 className="h-4 w-4 animate-spin" />
       </Button>
     );
@@ -77,10 +77,10 @@ export default function AuthButton() {
         onClick={handleLogin}
         variant="default"
         disabled={isLoggingIn}
-        className="rounded-full h-9 md:h-10 px-4 md:px-6 font-bold text-xs tracking-widest uppercase"
+        className="rounded-full h-9 md:h-10 px-4 md:px-5 font-semibold text-xs bg-white text-black hover:bg-white/90"
       >
         {isLoggingIn ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogIn className="mr-2 h-4 w-4" />}
-        Login
+        Sign in
       </Button>
     );
   }
@@ -92,7 +92,7 @@ export default function AuthButton() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 md:h-10 md:w-10 p-0 overflow-hidden border border-primary/20">
+        <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 md:h-10 md:w-10 p-0 overflow-hidden border border-border">
           <Avatar className="h-full w-full">
             <AvatarImage src={photoUrl} alt={displayName} />
             <AvatarFallback className="bg-primary/10 text-primary">
@@ -101,17 +101,17 @@ export default function AuthButton() {
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 liquid-glass rounded-xl mt-2 border-white/10 shadow-2xl p-2">
+      <DropdownMenuContent align="end" className="w-56 rounded-xl mt-2 border-border bg-card shadow-lg p-2">
         <DropdownMenuLabel className="font-bold p-3">
           <div className="flex flex-col space-y-1">
             <p className="text-sm leading-none">{displayName}</p>
             <p className="text-xs leading-none text-muted-foreground font-medium">{email}</p>
           </div>
         </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-white/5" />
-        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer rounded-lg p-3 font-bold uppercase text-[10px] tracking-widest hover:bg-destructive/10">
+        <DropdownMenuSeparator className="bg-border" />
+        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer rounded-lg p-3 text-xs hover:bg-destructive/10">
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Logout</span>
+          <span>Sign out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

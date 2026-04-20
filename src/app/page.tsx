@@ -87,7 +87,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen flex-col bg-black text-white overflow-hidden">
+    <div className="flex h-screen flex-col bg-background text-foreground overflow-hidden">
       <Header theme={theme} toggleTheme={toggleTheme} />
       <div className="flex-grow overflow-hidden relative">
         {isMobile ? <MobileView {...viewProps} /> : <DesktopView {...viewProps} />}

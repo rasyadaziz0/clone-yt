@@ -5,6 +5,7 @@ import { ytService } from '@/services/YouTubeService';
 import { useSupabaseClient, useUser } from '@/supabase/provider';
 
 const chatMessageSchema = z.string()
+    .min(1, "Pesan tidak boleh kosong")
     .max(200, "Pesan terlalu panjang (maksimal 200 karakter)")
     .trim()
     .transform(val => val.replace(/[<&>]/g, ''));
@@ -35,7 +36,7 @@ export function useSendMessage(
     const handleSendMessage = useCallback(async (e: React.FormEvent, messageText: string) => {
         e.preventDefault();
 
-        if (!user && !messageText.trim()) return;
+        if (!messageText.trim()) return;
 
         if (!user) {
             toast.error("Kamu harus login untuk mengirim pesan.");
@@ -63,20 +64,21 @@ export function useSendMessage(
             if (dbError) {
                 console.error("Gagal simpan riwayat chat:", dbError);
                 toast.error("Pesan Anda mungkin tidak tersimpan secara permanen.");
+                return;
             }
+
+            // Jangan tunggu API YouTube agar UI terasa instan.
+            onSuccess?.();
 
             // Kirim ke YouTube API (jika live dan ada token)
             const accessToken = localStorage.getItem('google_access_token');
             if (liveChatId && accessToken) {
-                try {
-                    await ytService.sendMessage(liveChatId, parsedMessage.data, accessToken);
-                } catch (ytError) {
-                    console.error("Gagal meneruskan ke YouTube Live Chat:", ytError);
-                }
+                ytService
+                    .sendMessage(liveChatId, parsedMessage.data, accessToken)
+                    .catch((ytError) => {
+                        console.error("Gagal meneruskan ke YouTube Live Chat:", ytError);
+                    });
             }
-
-            // Clear message on success
-            onSuccess?.();
         } catch (error) {
             console.error("Error mengirim pesan:", error);
             toast.error("Tidak dapat memproses pengiriman chat saat ini.");
