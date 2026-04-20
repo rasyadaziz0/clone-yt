@@ -49,20 +49,26 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
 
     const getFilteredHistory = () => {
         if (!history || history.length === 0) return [];
-        const maxPoints = history.length;
-        let points = 60;
+        let timeframeMs = 30 * 60 * 1000;
         switch (timeframe) {
-            case '1m': points = Math.min(2, maxPoints); break;
-            case '3m': points = Math.min(6, maxPoints); break;
-            case '5m': points = Math.min(10, maxPoints); break;
-            case '15m': points = Math.min(30, maxPoints); break;
-            case '30m': points = Math.min(60, maxPoints); break;
-            case '1h': points = Math.min(120, maxPoints); break;
-            case '2h': points = Math.min(240, maxPoints); break;
-            case '3h': points = Math.min(360, maxPoints); break;
-            default: points = Math.min(60, maxPoints);
+            case '1m': timeframeMs = 1 * 60 * 1000; break;
+            case '3m': timeframeMs = 3 * 60 * 1000; break;
+            case '5m': timeframeMs = 5 * 60 * 1000; break;
+            case '15m': timeframeMs = 15 * 60 * 1000; break;
+            case '30m': timeframeMs = 30 * 60 * 1000; break;
+            case '1h': timeframeMs = 60 * 60 * 1000; break;
+            case '2h': timeframeMs = 2 * 60 * 60 * 1000; break;
+            case '3h': timeframeMs = 3 * 60 * 60 * 1000; break;
+            default: timeframeMs = 30 * 60 * 1000;
         }
-        return history.slice(-points);
+
+        const latestTimestamp = history[history.length - 1]?.createdAt ?? Date.now();
+        const earliestTimestamp = latestTimestamp - timeframeMs;
+
+        return history.filter((point: { createdAt?: number }) => {
+            if (typeof point.createdAt !== 'number') return true;
+            return point.createdAt >= earliestTimestamp;
+        });
     };
 
     useEffect(() => {

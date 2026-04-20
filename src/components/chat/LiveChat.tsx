@@ -106,7 +106,7 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
         <div
           ref={scrollRef}
           onScroll={handleChatScroll}
-          className={`h-full overflow-y-auto overflow-x-hidden bg-background ${isFullscreen ? 'p-2 space-y-2' : 'p-2 sm:p-3 md:p-4 space-y-2 sm:space-y-3 md:space-y-4'}`}
+          className={`h-full overflow-y-auto overflow-x-hidden bg-background ${isFullscreen ? 'p-2 pb-3 space-y-2' : 'p-2 sm:p-3 md:p-4 pb-4 sm:pb-5 md:pb-6 space-y-2 sm:space-y-3 md:space-y-4'}`}
         >
           {isLoading ? (
             <div className="h-full flex items-center justify-center text-xs text-muted-foreground uppercase tracking-widest text-center">
@@ -145,7 +145,7 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
         )}
       </div>
 
-      <div className={`border-t shrink-0 ${isFullscreen ? 'p-2 border-white/10 bg-black/40' : 'p-2 sm:p-3 pb-4 sm:pb-6 border-border bg-card'}`}>
+      <div className={`border-t shrink-0 ${isFullscreen ? 'pt-2.5 px-4 pb-2 border-white/10 bg-black/40' : 'pt-3 px-2 pb-4 sm:pt-4 sm:px-3 sm:pb-6 border-border bg-card'}`}>
         {!user ? (
           <div className="flex flex-col items-center justify-center py-2 space-y-1.5 sm:space-y-2">
             <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.15em] sm:tracking-[0.2em] text-muted-foreground">Sign in to chat</p>

@@ -6,7 +6,7 @@ export function useYoutubeViewers(videoId: string | undefined) {
     const [viewersCount, setViewersCount] = useState<number>(0);
     const [isLive, setIsLive] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [history, setHistory] = useState<{ time: string, count: number }[]>([]);
+    const [history, setHistory] = useState<{ time: string; count: number; createdAt: number }[]>([]);
     
     const supabase = useMemo(() => createClient(), []);
 
@@ -20,16 +20,17 @@ export function useYoutubeViewers(videoId: string | undefined) {
             // Ambil 360 data TERBARU dengan descending, lalu reverse untuk urutan kronologis
             const { data, error } = await supabase
                 .from('live_history')
-                .select('time, viewers_count')
+                .select('time, viewers_count, created_at')
                 .eq('youtube_video_id', videoId)
                 .order('created_at', { ascending: false })
                 .limit(360);
 
             if (data && isMounted) {
                 // Reverse agar urutan waktu dari lama ke baru (jam 12 -> jam 1)
-                const formattedHistory = data.reverse().map((item: { time: string; viewers_count: number }) => ({
+                const formattedHistory = data.reverse().map((item: { time: string; viewers_count: number; created_at: string }) => ({
                     time: item.time,
-                    count: item.viewers_count
+                    count: item.viewers_count,
+                    createdAt: new Date(item.created_at).getTime(),
                 }));
                 setHistory(formattedHistory);
             }
@@ -61,18 +62,25 @@ export function useYoutubeViewers(videoId: string | undefined) {
                         setViewersCount(viewers);
                         setIsLive(viewers > 0);
 
-                        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const nowDate = new Date();
+                        const nowTime = nowDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                        const nowTimestamp = nowDate.getTime();
 
                         setHistory(prev => {
-                            if (prev.length > 0 && prev[prev.length - 1].time === now) {
+                            const lastPoint = prev[prev.length - 1];
+                            const sameMinute =
+                                !!lastPoint &&
+                                Math.floor(lastPoint.createdAt / 60000) === Math.floor(nowTimestamp / 60000);
+
+                            if (sameMinute) {
                                 return prev;
                             }
 
-                            const newHistory = [...prev, { time: now, count: viewers }].slice(-360);
+                            const newHistory = [...prev, { time: nowTime, count: viewers, createdAt: nowTimestamp }].slice(-360);
                             
                             supabase.from('live_history').insert({
                                 youtube_video_id: videoId,
-                                time: now,
+                                time: nowTime,
                                 viewers_count: viewers
                             }).then(({ error: insertError }: { error: Error | null }) => {
                                 if (insertError) console.error("Gagal menyimpan ke Supabase:", insertError);
