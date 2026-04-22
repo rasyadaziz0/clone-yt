@@ -75,7 +75,7 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
         const fetchVideoDetails = async () => {
             try {
                 const res = await ytService.fetchWithRetry((key) =>
-                    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${videoId}&key=${key}`
+                    `https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,liveStreamingDetails&id=${videoId}&key=${key}`
                 );
                 const data = await res.json();
 
@@ -236,7 +236,9 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
     if (loading) return <div className="h-24 sm:h-28 animate-pulse bg-white/[0.02] rounded-xl sm:rounded-2xl mt-3 sm:mt-5 w-full border border-white/[0.03]" />;
     if (!videoData) return null;
 
-    const { snippet, statistics } = videoData;
+    const { snippet, statistics, liveStreamingDetails } = videoData;
+    const isStreamingNow =
+        snippet?.liveBroadcastContent === 'live' || !!liveStreamingDetails?.concurrentViewers;
 
     const formatNumber = (num: string) => {
         return new Intl.NumberFormat('en-US', { notation: "compact", compactDisplay: "short" }).format(Number(num));
@@ -249,10 +251,12 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
             transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
             className="mt-3 sm:mt-4 p-3 sm:p-4 md:p-5 lg:p-6 rounded-xl border border-border bg-card flex flex-col gap-3 sm:gap-4"
         >
-            <div className="flex items-center gap-2 text-red-500">
-                <Youtube className="h-4 w-4" />
-                <span className="text-[11px] uppercase tracking-wider font-semibold">Now Streaming</span>
-            </div>
+            {isStreamingNow && (
+                <div className="flex items-center gap-2 text-red-500">
+                    <Youtube className="h-4 w-4" />
+                    <span className="text-[11px] uppercase tracking-wider font-semibold">Now Streaming</span>
+                </div>
+            )}
             <h1 className="text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold text-foreground tracking-tight leading-tight">
                 {snippet.title}
             </h1>

@@ -1,6 +1,4 @@
 import { useState, useCallback, useRef } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/supabase/provider';
 
 // Import hook-hook kecil dari folder chat
 import { useVideoTimeSync } from './chat/useVideoTimeSync';
@@ -11,8 +9,6 @@ import { useSendMessage } from './chat/useSendMessage';
 
 export function useLiveChat(videoId: string) {
     const [newMessage, setNewMessage] = useState('');
-    const { toast } = useToast();
-    const { user } = useUser();
 
     // Refs untuk tracking
     const lastSeenMessageIds = useRef<Set<string>>(new Set());
@@ -34,8 +30,7 @@ export function useLiveChat(videoId: string) {
         isReplay,
         isLoading,
         chatHistory,
-        lastSeenMessageIds: lastSeenFromSupabase,
-        addToQueue
+        lastSeenMessageIds: lastSeenFromSupabase
     } = useSupabaseChat(videoId, isReplayRef.current, handleNewMessageFromRealtime);
 
     if (isReplay !== isReplayRef.current) {
@@ -53,7 +48,7 @@ export function useLiveChat(videoId: string) {
         });
     }, []);
 
-    useYouTubePolling(
+    const { isQuotaExceeded } = useYouTubePolling(
         liveChatId,
         isReplay,
         videoId,
@@ -75,7 +70,7 @@ export function useLiveChat(videoId: string) {
     messageQueue.current = rendererQueue.current as any;
 
     // 5. REPLAY SYNC
-    const handleReplayMessages = useCallback((messages: any[], lastIndex: number) => {
+    const handleReplayMessages = useCallback((messages: any[], _lastIndex: number) => {
         addToVisibleMessages(messages);
     }, [addToVisibleMessages]);
 
@@ -85,10 +80,6 @@ export function useLiveChat(videoId: string) {
         chatHistory as any,
         handleReplayMessages
     );
-
-    const handleVideoSeek = useCallback((newTime: number) => {
-        rendererHandleVideoSeek(newTime, chatHistory as any);
-    }, [rendererHandleVideoSeek, chatHistory]);
 
     // 6. SEND MESSAGE
     const handleSendSuccess = useCallback(() => {
@@ -115,6 +106,7 @@ export function useLiveChat(videoId: string) {
         isSending,
         isReplay,
         isLoading,
+        isQuotaExceeded,
         handleSendMessage,
         currentVideoTime: currentVideoTimeRef.current
     };

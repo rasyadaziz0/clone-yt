@@ -8,6 +8,9 @@ interface UsePlayerSyncParams {
   isPlayerReady: boolean;
   isLive: boolean;
   availableQualities: string[];
+  onPlayerReadyRef: React.MutableRefObject<((event: any) => void) | null>;
+  onPlayerStateChangeRef: React.MutableRefObject<((event: any) => void) | null>;
+  onPlaybackQualityChangeRef: React.MutableRefObject<((event: any) => void) | null>;
   checkIsLive: (player: any) => boolean;
   refreshQualities: () => void;
   setIsPlaying: (value: boolean) => void;
@@ -20,9 +23,6 @@ interface UsePlayerSyncParams {
 }
 
 interface UsePlayerSyncReturn {
-  onPlayerReadyRef: React.MutableRefObject<((event: any) => void) | null>;
-  onPlayerStateChangeRef: React.MutableRefObject<((event: any) => void) | null>;
-  onPlaybackQualityChangeRef: React.MutableRefObject<((event: any) => void) | null>;
   handleSyncLive: () => void;
   formatQualityLabel: (q: string) => string;
 }
@@ -32,6 +32,9 @@ export function usePlayerSync({
   videoId,
   isLive,
   availableQualities,
+  onPlayerReadyRef,
+  onPlayerStateChangeRef,
+  onPlaybackQualityChangeRef,
   checkIsLive,
   refreshQualities,
   setIsPlaying,
@@ -43,9 +46,6 @@ export function usePlayerSync({
   setIsLiveSynced,
 }: UsePlayerSyncParams): UsePlayerSyncReturn {
   const progressIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const onPlayerReadyRef = useRef<((event: any) => void) | null>(null);
-  const onPlayerStateChangeRef = useRef<((event: any) => void) | null>(null);
-  const onPlaybackQualityChangeRef = useRef<((event: any) => void) | null>(null);
 
   // Update progress
   const updateProgress = useCallback(() => {
@@ -72,10 +72,17 @@ export function usePlayerSync({
     setIsMuted(event.target.isMuted());
     updateProgress();
 
-    const savedTime = localStorage.getItem(`yt_progress_${videoId}`);
-    if (savedTime && !checkIsLive(event.target)) {
-      event.target.seekTo(parseFloat(savedTime), true);
-    }
+    const savedTimeRaw = localStorage.getItem(`yt_progress_${videoId}`);
+    const savedTime = savedTimeRaw ? parseFloat(savedTimeRaw) : NaN;
+    if (!Number.isFinite(savedTime) || savedTime <= 0) return;
+
+    // Delay restore so live metadata has time to settle; avoid seeking old VOD position on live streams.
+    setTimeout(() => {
+      if (checkIsLive(event.target)) return;
+      const totalDuration = typeof event.target.getDuration === 'function' ? event.target.getDuration() : 0;
+      if (totalDuration <= 0) return;
+      event.target.seekTo(Math.min(savedTime, Math.max(totalDuration - 2, 0)), true);
+    }, 400);
   }, [videoId, updateProgress, checkIsLive, setVolume, setIsMuted]);
 
   // Player state change handler
@@ -101,10 +108,33 @@ export function usePlayerSync({
   // Sync to live edge
   const handleSyncLive = useCallback(() => {
     if (playerRef.current && isLive) {
-      playerRef.current.seekTo(playerRef.current.getDuration(), true);
+      const toLiveEdge = () => {
+        const liveEdge = typeof playerRef.current.getDuration === 'function' ? playerRef.current.getDuration() : 0;
+        if (liveEdge > 0) {
+          const targetTime = Math.max(liveEdge - 0.1, 0);
+          playerRef.current.seekTo(targetTime, true);
+          setCurrentTime(targetTime);
+          setDuration(liveEdge);
+        }
+      };
+
+      toLiveEdge();
+      if (typeof playerRef.current.playVideo === 'function') {
+        playerRef.current.playVideo();
+      }
+      setIsPlaying(true);
       setIsLiveSynced(true);
+
+      // Retry once after buffering so seek lands on newest live edge.
+      setTimeout(() => {
+        if (!playerRef.current || !isLive) return;
+        toLiveEdge();
+        if (typeof playerRef.current.getCurrentTime === 'function') {
+          setCurrentTime(playerRef.current.getCurrentTime());
+        }
+      }, 350);
     }
-  }, [isLive, playerRef, setIsLiveSynced]);
+  }, [isLive, playerRef, setIsLiveSynced, setIsPlaying, setCurrentTime, setDuration]);
 
   // Format quality label
   const formatQualityLabel = useCallback((q: string) => {
@@ -138,9 +168,6 @@ export function usePlayerSync({
   }, []);
 
   return {
-    onPlayerReadyRef,
-    onPlayerStateChangeRef,
-    onPlaybackQualityChangeRef,
     handleSyncLive,
     formatQualityLabel,
   };

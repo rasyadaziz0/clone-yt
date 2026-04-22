@@ -27,6 +27,7 @@ export interface UseSupabaseChatReturn {
     liveChatId: string | null;
     isReplay: boolean;
     isLoading: boolean;
+    isQuotaExceeded: boolean;
     chatHistory: ChatMessage[];
     lastSeenMessageIds: Set<string>;
     addToQueue: (msg: ChatMessage) => void;
@@ -41,6 +42,7 @@ export function useSupabaseChat(
     const [liveChatId, setLiveChatId] = useState<string | null>(null);
     const [isReplayState, setIsReplayState] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
+    const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
     const supabase = useSupabaseClient();
@@ -113,6 +115,7 @@ export function useSupabaseChat(
                 if (isMounted) {
                     setLiveChatId(id);
                     setIsReplayState(replayStatus);
+                    setIsQuotaExceeded(false);
                 }
 
                 // Fetch History Chat dari Supabase (SSOT)
@@ -135,6 +138,10 @@ export function useSupabaseChat(
                     adaptedHistory.forEach(msg => lastSeenMessageIds.current.add(msg.id));
                 }
             } catch (error) {
+                const errMessage = error instanceof Error ? error.message : String(error);
+                if (isMounted && errMessage.includes('All YouTube API Keys have exceeded their quota')) {
+                    setIsQuotaExceeded(true);
+                }
                 console.error("Error inisialisasi live chat:", error);
             } finally {
                 if (isMounted) setIsLoading(false);
@@ -190,6 +197,7 @@ export function useSupabaseChat(
         liveChatId,
         isReplay: isReplayState,
         isLoading,
+        isQuotaExceeded,
         chatHistory,
         lastSeenMessageIds: lastSeenMessageIds.current,
         addToQueue,

@@ -43,10 +43,11 @@ export function useYouTubeIframe({
 
   // Check if video is live
   const checkIsLive = useCallback((player: any) => {
-    if (!player || typeof player.getDuration !== 'function') return false;
-    const d = player.getDuration();
+    if (!player) return false;
     const videoData = typeof player.getVideoData === 'function' ? player.getVideoData() : null;
-    return d === 0 || (videoData && videoData.isLive);
+    if (typeof videoData?.isLive === 'boolean') return videoData.isLive;
+    if (typeof videoData?.isLiveContent === 'boolean') return videoData.isLiveContent;
+    return false;
   }, []);
 
   // Refresh available quality levels
@@ -68,8 +69,10 @@ export function useYouTubeIframe({
 
   // Internal state change handler
   const handlePlayerStateChange = useCallback((event: any) => {
+    // Re-check live status after playback starts/buffers because metadata may be late on onReady.
+    setIsLive(checkIsLive(event.target));
     onPlayerStateChangeRef.current?.(event);
-  }, [onPlayerStateChangeRef]);
+  }, [checkIsLive, onPlayerStateChangeRef]);
 
   // Internal quality change handler
   const handlePlaybackQualityChange = useCallback((event: any) => {

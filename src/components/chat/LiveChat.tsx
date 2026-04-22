@@ -28,6 +28,7 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
     isSending,
     isReplay,
     isLoading,
+    isQuotaExceeded,
     handleSendMessage
   } = useLiveChat(videoId);
 
@@ -35,6 +36,8 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
   const shouldAutoScrollRef = useRef(true);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const hasApiKey = ytService.getKey() !== '';
+  const shouldShowYouTubeFallback = isQuotaExceeded && !!videoId && !!hostname;
+  const fallbackChatUrl = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=${hostname}&dark_theme=1`;
 
   const isNearBottom = (el: HTMLDivElement) => {
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
@@ -103,6 +106,14 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
       </div>
 
       <div className="relative flex-grow min-h-0">
+        {shouldShowYouTubeFallback ? (
+          <iframe
+            title="YouTube Live Chat Fallback"
+            src={fallbackChatUrl}
+            className="w-full h-full border-0 bg-black"
+            allow="autoplay; encrypted-media"
+          />
+        ) : (
         <div
           ref={scrollRef}
           onScroll={handleChatScroll}
@@ -132,7 +143,8 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
             ))
           )}
         </div>
-        {showJumpToLatest && (
+        )}
+        {showJumpToLatest && !shouldShowYouTubeFallback && (
           <Button
             type="button"
             size="sm"

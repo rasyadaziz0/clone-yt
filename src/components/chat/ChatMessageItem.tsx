@@ -5,8 +5,10 @@ import { User as UserIcon, Crown, Wrench, Star } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import EMOT_LIST from '@/emot/emot';
 
-const BUBBLE_RADIUS = 'rounded-xl';
+const BUBBLE_RADIUS = 'rounded-2xl';
+const emotMap = new Map(EMOT_LIST.map((emot) => [String(emot.code).toLowerCase(), emot.url]));
 
 interface ChatMessageItemProps {
   msg: any;
@@ -15,19 +17,28 @@ interface ChatMessageItemProps {
 
 const formatChatMessage = (text: string | undefined) => {
   if (!text) return null;
-  // Regex untuk mendeteksi teks di antara dua titik dua, misal :nama-emot:
+  // Mendukung format :nama-emot: agar bisa dirender sebagai gambar.
   const parts = text.split(/(:[a-zA-Z0-9_-]+:)/g);
 
   return parts.map((part, i) => {
     if (part.startsWith(':') && part.endsWith(':')) {
-      // Hapus titik dua dan ubah strip menjadi spasi untuk dibaca
-      const emotName = part.slice(1, -1).replace(/-/g, ' ');
-      return (
-        <span key={i} className="inline-flex items-center justify-center bg-white/10 text-muted-foreground text-[9px] px-1.5 py-[1px] rounded mx-0.5 uppercase tracking-wider font-bold border border-white/5">
-          {emotName}
-        </span>
-      );
+      const emotCode = part.slice(1, -1);
+      const emotUrl = emotMap.get(emotCode.toLowerCase());
+
+      if (emotUrl) {
+        return (
+          <img
+            key={i}
+            src={emotUrl}
+            alt={emotCode}
+            title={emotCode}
+            className="inline-block h-5 w-5 align-text-bottom mx-0.5 rounded-sm object-contain"
+            loading="lazy"
+          />
+        );
+      }
     }
+
     return <span key={i}>{part}</span>;
   });
 };

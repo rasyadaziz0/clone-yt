@@ -53,12 +53,15 @@ export function usePlayerState({ playerRef, isPlayerReady, isLive }: UsePlayerSt
       if (playerRef.current && typeof playerRef.current.getCurrentTime === 'function') {
         const current = playerRef.current.getCurrentTime();
         const duration = playerRef.current.getDuration();
-        // Consider synced if within 3 seconds of the live edge
-        const synced = duration > 0 && Math.abs(duration - current) < 3;
+        // Tolerate live-edge jitter where current time can temporarily overshoot duration.
+        if (duration <= 0) return;
+        const liveLag = duration - current;
+        const synced = Number.isFinite(liveLag) && Math.abs(liveLag) <= 45;
         setIsLiveSynced(synced);
       }
     };
     
+    checkSync();
     const interval = setInterval(checkSync, 1000);
     return () => clearInterval(interval);
   }, [isLive, playerRef]);

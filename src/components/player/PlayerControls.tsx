@@ -139,7 +139,10 @@ export default function PlayerControls({
                 {isLive && (
                   <div
                     className="flex items-center gap-1.5 cursor-pointer group px-1.5"
-                    onClick={handleSyncLive}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSyncLive();
+                    }}
                     title={isLiveSynced ? 'Live stream synced' : 'Click to sync to live'}
                   >
                     <span className="relative flex h-1.5 w-1.5">
@@ -153,7 +156,7 @@ export default function PlayerControls({
                       )}
                     </span>
                     <span className={`font-semibold text-[9px] md:text-[10px] tracking-wider uppercase transition-colors ${
-                      isLiveSynced ? 'text-white' : 'text-white/50'
+                      isLiveSynced ? 'text-red-500' : 'text-white/50'
                     }`}>
                       Live
                     </span>

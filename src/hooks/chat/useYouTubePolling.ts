@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ytService } from '@/services/YouTubeService';
 import { useSupabaseClient } from '@/supabase/provider';
 
@@ -53,6 +53,7 @@ interface InsertPayload {
 export interface UseYouTubePollingReturn {
     isPolling: boolean;
     lastFetchTime: number | null;
+    isQuotaExceeded: boolean;
 }
 
 // System user ID for YouTube-imported messages
@@ -70,9 +71,13 @@ export function useYouTubePolling(
     const isPollingRef = useRef(false);
     const lastFetchTimeRef = useRef<number | null>(null);
     const lastSeenIdsRef = useRef(lastSeenMessageIds);
+    const currentVideoTimeRef = useRef(currentVideoTime);
+    const isFetchingRef = useRef(false);
+    const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
 
     // Update ref ketika prop berubah
     lastSeenIdsRef.current = lastSeenMessageIds;
+    currentVideoTimeRef.current = currentVideoTime;
 
     // Ekstrak teks pesan berdasarkan tipe
     const extractMessageText = (msg: YouTubeMessage): string => {
@@ -119,7 +124,7 @@ export function useYouTubePolling(
             display_name: msg.authorDetails?.displayName || 'YouTube User',
             avatar_url: msg.authorDetails?.profileImageUrl || null,
             message: extractMessageText(msg),
-            video_timestamp: Math.floor(currentVideoTime)
+            video_timestamp: Math.floor(currentVideoTimeRef.current)
         }));
     };
 
@@ -133,9 +138,13 @@ export function useYouTubePolling(
         isPollingRef.current = true;
 
         const fetchMsgs = async () => {
+            if (isFetchingRef.current) return;
+            isFetchingRef.current = true;
+
             try {
                 const items = await ytService.getMessages(liveChatId);
                 lastFetchTimeRef.current = Date.now();
+                setIsQuotaExceeded(false);
 
                 if (items.length === 0) return;
 
@@ -153,7 +162,13 @@ export function useYouTubePolling(
                     lastSeenIdsRef.current = new Set(arr);
                 }
             } catch (error) {
+                const errMessage = error instanceof Error ? error.message : String(error);
+                if (errMessage.includes('All YouTube API Keys have exceeded their quota')) {
+                    setIsQuotaExceeded(true);
+                }
                 console.error("Error fetching YouTube messages:", error);
+            } finally {
+                isFetchingRef.current = false;
             }
         };
 
@@ -166,11 +181,13 @@ export function useYouTubePolling(
         return () => {
             clearInterval(interval);
             isPollingRef.current = false;
+            isFetchingRef.current = false;
         };
-    }, [liveChatId, isReplay, videoId, currentVideoTime, supabase, onInsertFallback]);
+    }, [liveChatId, isReplay, onInsertFallback]);
 
     return {
         isPolling: isPollingRef.current,
-        lastFetchTime: lastFetchTimeRef.current
+        lastFetchTime: lastFetchTimeRef.current,
+        isQuotaExceeded
     };
 }
