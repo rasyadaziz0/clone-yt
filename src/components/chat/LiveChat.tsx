@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageSquare, ExternalLink, Send, User as UserIcon, MessageSquareOff, ArrowDown } from 'lucide-react';
+import { MessageSquare, ExternalLink, Send, User as UserIcon, MessageSquareOff, ArrowDown, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import AuthButton from '@/components/auth/AuthButton';
@@ -16,9 +16,10 @@ interface LiveChatProps {
   hostname: string;
   user: User | null;
   isFullscreen?: boolean;
+  onClose?: () => void;
 }
 
-export default function LiveChat({ videoId, theme, hostname, user, isFullscreen }: LiveChatProps) {
+export default function LiveChat({ videoId, hostname, user, isFullscreen, onClose }: LiveChatProps) {
   const SCROLL_BOTTOM_THRESHOLD = 80;
   const {
     liveChatId,
@@ -87,21 +88,43 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
   }, [videoId]);
 
   return (
-    <div className={`legacy-live-chat-anim flex flex-col flex-none bg-card transition-all relative z-10 overflow-hidden ${isFullscreen
+    <div className={`legacy-live-chat-anim flex flex-col flex-none transition-all relative z-10 overflow-hidden ${isFullscreen
       ? 'w-full h-[40vh] min-h-[200px] landscape:h-full landscape:min-h-0 border-t border-white/10 landscape:border-t-0 landscape:border-l landscape:border-l-white/10 rounded-none'
-      : 'w-full border border-border h-full rounded-xl'
+      : 'w-full h-full border border-white/10 bg-[#0b0b0b] rounded-t-3xl rounded-b-none sm:rounded-xl sm:border-border sm:bg-card'
       }`}>
-      <div className={`px-2 sm:px-3 py-2 sm:py-2.5 flex items-center justify-between border-b shrink-0 ${isFullscreen ? 'border-white/10 bg-black/30' : 'border-border bg-card'}`}>
-        <div className="flex items-center gap-1.5 sm:gap-2">
+      <div className={`px-3 sm:px-3 py-2.5 sm:py-2.5 flex items-center border-b shrink-0 ${isFullscreen ? 'border-white/10 bg-black/30' : 'border-white/10 sm:border-border bg-black/40 sm:bg-card'}`}>
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
           <MessageSquare className={`text-red-500 ${isFullscreen ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
-          <span className={`font-bold uppercase tracking-widest text-foreground ${isFullscreen ? 'text-[10px]' : 'text-[10px] sm:text-xs'}`}>Live Chat</span>
+          <span className={`font-bold text-foreground ${isFullscreen ? 'text-[10px] uppercase tracking-widest' : 'text-xs sm:text-xs sm:uppercase sm:tracking-widest'}`}>
+            <span className="sm:hidden inline-flex items-center gap-1">Live chat</span>
+            <span className="hidden sm:inline">Live Chat</span>
+          </span>
         </div>
+        {!isFullscreen && (
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={!onClose}
+            className="sm:hidden inline-flex h-7 w-7 items-center justify-center rounded-full text-foreground/60 transition-colors hover:text-foreground active:text-foreground"
+            aria-label="Close chat panel"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
         {videoId && (
-          <Button variant="ghost" size="icon" asChild className="h-7 w-7 text-foreground/50 hover:text-primary rounded-lg">
-            <a href={`https://www.youtube.com/live_chat?v=${videoId}`} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" />
-            </a>
-          </Button>
+          <a
+            href={`https://www.youtube.com/live_chat?v=${videoId}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group inline-flex shrink-0 items-center gap-2 rounded-full border border-border/50 bg-background/90 px-2.5 py-1 text-[11px] font-medium text-muted-foreground shadow-sm transition-all hover:border-red-500/40 hover:text-red-500 hover:shadow-md sm:px-3 sm:text-xs"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            Live Chat
+            <ExternalLink className="hidden h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 sm:inline-flex" />
+          </a>
         )}
       </div>
 
@@ -117,7 +140,7 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
         <div
           ref={scrollRef}
           onScroll={handleChatScroll}
-          className={`h-full overflow-y-auto overflow-x-hidden bg-background ${isFullscreen ? 'p-2 pb-3 space-y-2' : 'p-2 sm:p-3 md:p-4 pb-4 sm:pb-5 md:pb-6 space-y-2 sm:space-y-3 md:space-y-4'}`}
+          className={`h-full overflow-y-auto overflow-x-hidden bg-[#0b0b0b] sm:bg-background ${isFullscreen ? 'p-2 pb-3 space-y-2' : 'px-2 py-1.5 pb-3 sm:p-3 md:p-4 sm:pb-5 md:pb-6 space-y-1 sm:space-y-3 md:space-y-4'}`}
         >
           {isLoading ? (
             <div className="h-full flex items-center justify-center text-xs text-muted-foreground uppercase tracking-widest text-center">
@@ -175,9 +198,9 @@ export default function LiveChat({ videoId, theme, hostname, user, isFullscreen 
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="Kirim pesan..."
               disabled={isSending}
-              className={`flex-grow bg-background border border-border rounded-full focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50 text-foreground ${isFullscreen ? 'px-3 py-1.5 text-xs' : 'px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs md:text-sm'}`}
+              className={`flex-grow bg-background border border-border rounded-lg sm:rounded-full focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50 text-foreground ${isFullscreen ? 'px-3 py-1.5 text-xs' : 'px-3 py-1.5 sm:px-4 sm:py-2 text-[11px] sm:text-xs md:text-sm'}`}
             />
-            <Button type="submit" size="icon" disabled={isSending || !newMessage.trim()} className={`rounded-full flex-none bg-red-600 hover:bg-red-700 text-white ${isFullscreen ? 'h-7 w-7' : 'h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9'}`}>
+            <Button type="submit" size="icon" disabled={isSending || !newMessage.trim()} className={`rounded-lg sm:rounded-full flex-none bg-red-600 hover:bg-red-700 text-white ${isFullscreen ? 'h-7 w-7' : 'h-7 w-7 sm:h-8 sm:w-8 md:h-9 md:w-9'}`}>
               <Send className={`${isFullscreen ? 'h-3 w-3' : 'h-3 w-3 sm:h-3.5 sm:w-3.5 md:h-4 md:w-4'}`} />
             </Button>
           </form>

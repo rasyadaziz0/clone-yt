@@ -52,6 +52,11 @@ interface AnimatedContentProps extends React.HTMLAttributes<HTMLDivElement> {
 const DEFAULT_DISTANCE = 16;
 const DEFAULT_DURATION = 0.5;
 const DEFAULT_EASE = 'power2.out';
+const MOBILE_MEDIA_QUERY = '(max-width: 768px), (pointer: coarse)';
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+};
 
 const AnimatedContent = forwardRef<HTMLDivElement, AnimatedContentProps>(({
   children,
@@ -79,6 +84,7 @@ const AnimatedContent = forwardRef<HTMLDivElement, AnimatedContentProps>(({
 }, forwardedRef) => {
   const internalRef = useRef<HTMLDivElement | null>(null);
   const dropdownContext = useDropdownAnimation();
+  const [disableAnimation, setDisableAnimation] = useState(isMobileDevice);
   
   // Use controlled isOpen prop, or from context, or default
   const isOpen = controlledIsOpen ?? dropdownContext?.isOpen ?? true;
@@ -102,6 +108,18 @@ const AnimatedContent = forwardRef<HTMLDivElement, AnimatedContentProps>(({
 
     const axis = direction === 'horizontal' ? 'x' : 'y';
     const offset = reverse ? -distance : distance;
+
+    if (disableAnimation) {
+      gsap.killTweensOf(el);
+      if (isOpen) {
+        gsap.set(el, { [axis]: 0, scale: 1, opacity: 1, visibility: 'visible' });
+        onComplete?.();
+      } else {
+        gsap.set(el, { [axis]: offset / 2, scale: scaleInitial, opacity: 0, visibility: 'hidden' });
+        onDisappearanceComplete?.();
+      }
+      return;
+    }
 
     gsap.killTweensOf(el);
 
@@ -143,7 +161,7 @@ const AnimatedContent = forwardRef<HTMLDivElement, AnimatedContentProps>(({
     return () => {
       gsap.killTweensOf(el);
     };
-  }, [dropdownMode, isOpen, direction, reverse, distance, duration, delay, disappearDuration, disappearEase, scaleInitial, onComplete, onDisappearanceComplete]);
+  }, [dropdownMode, isOpen, direction, reverse, distance, duration, delay, disappearDuration, disappearEase, scaleInitial, onComplete, onDisappearanceComplete, disableAnimation]);
 
   // Scroll-triggered mode (original behavior)
   useEffect(() => {
@@ -151,6 +169,17 @@ const AnimatedContent = forwardRef<HTMLDivElement, AnimatedContentProps>(({
     
     const el = internalRef.current;
     if (!el) return;
+
+    if (disableAnimation) {
+      gsap.set(el, {
+        x: 0,
+        y: 0,
+        scale: 1,
+        opacity: 1,
+        visibility: 'visible'
+      });
+      return;
+    }
 
     let scrollerTarget: Element | string | null = container || document.getElementById('snap-main-container') || null;
 
@@ -210,6 +239,7 @@ const AnimatedContent = forwardRef<HTMLDivElement, AnimatedContentProps>(({
     };
   }, [
     dropdownMode,
+    disableAnimation,
     container,
     distance,
     direction,
@@ -227,6 +257,21 @@ const AnimatedContent = forwardRef<HTMLDivElement, AnimatedContentProps>(({
     onComplete,
     onDisappearanceComplete
   ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
+    const update = () => setDisableAnimation(mediaQuery.matches);
+    update();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', update);
+      return () => mediaQuery.removeEventListener('change', update);
+    }
+
+    mediaQuery.addListener(update);
+    return () => mediaQuery.removeListener(update);
+  }, []);
 
   return (
     <div 

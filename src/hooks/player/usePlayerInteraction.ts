@@ -13,7 +13,9 @@ export function usePlayerInteraction({
   playerRef,
 }: UsePlayerInteractionParams) {
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const coarsePointerMediaQueryRef = useRef<MediaQueryList | null>(null);
   const [showControls, setShowControls] = useState(true);
+  const [isTouch, setIsTouch] = useState(false);
 
   const isVideoPlaying = useCallback(() => {
     if (playerRef.current && typeof playerRef.current.getPlayerState === 'function') {
@@ -39,16 +41,33 @@ export function usePlayerInteraction({
   const handleContainerClick = useCallback((e: React.MouseEvent) => {
     // Cegah event bubbling
     e.stopPropagation();
-    
-    // Panggil toggle play (yang sekarang sudah diperbaiki)
-    handleTogglePlay(); 
-    
+
+    if (isTouch) {
+      // Mobile behavior (seperti YouTube): tap video untuk toggle visibility controls,
+      // play/pause dilakukan lewat tombol kontrol agar tidak terlalu sensitif.
+      setShowControls((prev) => {
+        const nextVisible = !prev;
+        if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
+
+        if (nextVisible) {
+          inactivityTimeoutRef.current = setTimeout(() => {
+            if (playerRef.current?.getPlayerState() === 1) setShowControls(false);
+          }, 2500);
+        }
+
+        return nextVisible;
+      });
+      return;
+    }
+
+    handleTogglePlay();
+
     setShowControls(true);
     if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
-    inactivityTimeoutRef.current = setTimeout(() => { 
-      if (playerRef.current?.getPlayerState() === 1) setShowControls(false); 
+    inactivityTimeoutRef.current = setTimeout(() => {
+      if (playerRef.current?.getPlayerState() === 1) setShowControls(false);
     }, 2500);
-  }, [handleTogglePlay, playerRef]);
+  }, [handleTogglePlay, isTouch, playerRef]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation();
@@ -63,6 +82,36 @@ export function usePlayerInteraction({
   }, [playerRef]);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const detectTouch = () => {
+      const hasTouch =
+        'ontouchstart' in window ||
+        (navigator.maxTouchPoints ?? 0) > 0 ||
+        Boolean(coarsePointerMediaQueryRef.current?.matches);
+      setIsTouch(hasTouch);
+    };
+
+    coarsePointerMediaQueryRef.current = window.matchMedia('(pointer: coarse)');
+    detectTouch();
+
+    const mediaQuery = coarsePointerMediaQueryRef.current;
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', detectTouch);
+    } else {
+      mediaQuery.addListener(detectTouch);
+    }
+
+    return () => {
+      if (typeof mediaQuery.removeEventListener === 'function') {
+        mediaQuery.removeEventListener('change', detectTouch);
+      } else {
+        mediaQuery.removeListener(detectTouch);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (inactivityTimeoutRef.current) clearTimeout(inactivityTimeoutRef.current);
     };
@@ -70,7 +119,7 @@ export function usePlayerInteraction({
 
   return {
     showControls,
-    isTouch: false,
+    isTouch,
     handleMouseMove,
     handleMouseLeave,
     handleContainerClick,

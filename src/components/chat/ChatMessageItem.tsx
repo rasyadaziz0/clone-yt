@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { User as UserIcon, Wrench } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import gsap from 'gsap';
@@ -8,6 +8,11 @@ import { useGSAP } from '@gsap/react';
 import EMOT_LIST from '@/emot/emot';
 
 const BUBBLE_RADIUS = 'rounded-2xl';
+const MOBILE_MEDIA_QUERY = '(max-width: 768px), (pointer: coarse)';
+const isMobileDevice = () => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
+};
 const normalizeEmotUrl = (url: string) => url.replace(/=w\d+-h\d+-c-k-nd$/i, '=s50');
 const emotMap = new Map<string, { primaryUrl: string; fallbackUrl: string }>(
   EMOT_LIST.map((emot) => {
@@ -95,8 +100,15 @@ const formatChatMessage = (text: string | undefined) => {
 
 export default function ChatMessageItem({ msg, isFullscreen = false }: ChatMessageItemProps) {
   const chatRef = useRef<HTMLDivElement>(null);
+  const [disableAnimation, setDisableAnimation] = useState(isMobileDevice);
+  const [isMobileLayout, setIsMobileLayout] = useState(isMobileDevice);
 
   useGSAP(() => {
+    if (disableAnimation) {
+      gsap.set(chatRef.current, { opacity: 1, scale: 1, y: 0 });
+      return;
+    }
+
     // Timeline untuk animasi bertahap yang lebih terasa
     const tl = gsap.timeline();
     
@@ -127,7 +139,25 @@ export default function ChatMessageItem({ msg, isFullscreen = false }: ChatMessa
       duration: 0.08,
       ease: "power2.inOut"
     });
-  }, { dependencies: [msg.id], scope: chatRef });
+  }, { dependencies: [msg.id, disableAnimation], scope: chatRef });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia(MOBILE_MEDIA_QUERY);
+    const update = () => {
+      setDisableAnimation(mediaQuery.matches);
+      setIsMobileLayout(mediaQuery.matches);
+    };
+    update();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', update);
+      return () => mediaQuery.removeEventListener('change', update);
+    }
+
+    mediaQuery.addListener(update);
+    return () => mediaQuery.removeListener(update);
+  }, []);
 
   const { isChatOwner, isChatModerator, isChatSponsor, displayName, profileImageUrl } = msg.authorDetails;
   const type = msg.snippet.type;
@@ -238,6 +268,8 @@ export default function ChatMessageItem({ msg, isFullscreen = false }: ChatMessa
     );
   }
 
+  const isMobileFlatText = type === 'textMessageEvent' && !isFullscreen && isMobileLayout;
+
   return (
     <div ref={chatRef} className={`flex items-start w-full group ${isFullscreen ? 'gap-1.5' : 'gap-1.5 sm:gap-2 md:gap-2.5'}`}>
       <Avatar className={`mt-0.5 shrink-0 border border-border ${isFullscreen ? 'h-5 w-5' : 'h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7'}`}>
@@ -245,21 +277,30 @@ export default function ChatMessageItem({ msg, isFullscreen = false }: ChatMessa
         <AvatarFallback><UserIcon className="h-2.5 w-2.5 sm:h-3 sm:w-3" /></AvatarFallback>
       </Avatar>
 
-      {/* Terapkan customBg di sini */}
-      <div className={`flex flex-col flex-1 min-w-0 border relative overflow-hidden ${BUBBLE_RADIUS} ${isFullscreen ? 'p-1.5' : 'p-1.5 sm:p-2 md:p-2 lg:p-3'} ${customBg}`}>
-        {/* Hapus gradient hover untuk hemat GPU */}
-
-        <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap mb-0.5 sm:mb-1 relative z-10">
-          <span className={`${isFullscreen ? 'text-[10px]' : 'text-[10px] sm:text-[11px] md:text-[12px]'} font-bold tracking-tight ${nameColor}`}>
-            {displayName}
-          </span>
-          {badgeIcon}
-        </div>
-
-        {/* Render Konten Pesan */}
-        <div className="relative z-10">
-          {messageContent}
-        </div>
+      <div className={`flex flex-col flex-1 min-w-0 relative overflow-hidden ${isMobileFlatText ? 'border-0 bg-transparent rounded-none p-0' : `border ${BUBBLE_RADIUS} ${isFullscreen ? 'p-1.5' : 'p-1.5 sm:p-2 md:p-2 lg:p-3'} ${customBg}`}`}>
+        {isMobileFlatText ? (
+          <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+            <span className={`text-[12px] font-bold tracking-tight ${nameColor}`}>
+              {displayName}
+            </span>
+            {badgeIcon}
+            <div className="text-[12px] leading-relaxed break-words text-foreground">
+              {messageContent}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap mb-0.5 sm:mb-1 relative z-10">
+              <span className={`${isFullscreen ? 'text-[10px]' : 'text-[10px] sm:text-[11px] md:text-[12px]'} font-bold tracking-tight ${nameColor}`}>
+                {displayName}
+              </span>
+              {badgeIcon}
+            </div>
+            <div className="relative z-10">
+              {messageContent}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

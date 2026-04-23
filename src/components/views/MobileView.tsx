@@ -68,7 +68,7 @@ export default function MobileView({
           className={`flex flex-col ${
             isFullscreen
               ? 'w-full h-[40vh] min-h-[200px] landscape:h-full landscape:w-[280px] landscape:min-h-0 rounded-none border-none z-50 bg-black/95'
-              : 'shrink-0 w-full h-[280px] overflow-hidden rounded-lg border border-border bg-card'
+              : 'shrink-0 w-full h-[52vh] min-h-[360px] max-h-[72vh] overflow-hidden rounded-t-3xl rounded-b-none border border-white/10 bg-[#0b0b0b]'
           }`}
         >
           <LiveChat
@@ -77,6 +77,7 @@ export default function MobileView({
             hostname={hostname}
             user={user}
             isFullscreen={isFullscreen}
+            onClose={() => setShowChat(false)}
           />
         </AnimatedContent>
       )}
