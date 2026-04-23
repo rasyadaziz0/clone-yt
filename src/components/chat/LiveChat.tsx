@@ -122,7 +122,7 @@ export default function LiveChat({ videoId, hostname, user, isFullscreen, onClos
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
             </span>
-            Live Chat
+            youtube
             <ExternalLink className="hidden h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100 sm:inline-flex" />
           </a>
         )}
