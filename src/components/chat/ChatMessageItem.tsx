@@ -1,19 +1,53 @@
 'use client';
 
 import { useRef } from 'react';
-import { User as UserIcon, Crown, Wrench, Star } from 'lucide-react';
+import { User as UserIcon, Wrench } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import EMOT_LIST from '@/emot/emot';
 
 const BUBBLE_RADIUS = 'rounded-2xl';
-const emotMap = new Map(EMOT_LIST.map((emot) => [String(emot.code).toLowerCase(), emot.url]));
+const normalizeEmotUrl = (url: string) => url.replace(/=w\d+-h\d+-c-k-nd$/i, '=s48');
+const emotMap = new Map(
+  EMOT_LIST.map((emot) => [String(emot.code).toLowerCase(), normalizeEmotUrl(String(emot.url))])
+);
 
 interface ChatMessageItemProps {
   msg: any;
   isFullscreen?: boolean;
 }
+
+const OwnerBadge = () => (
+  <span
+    className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#ff3d3d]"
+    title="Channel owner"
+  >
+    <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 fill-white" aria-hidden="true">
+      <path d="M4 3.1v5.8L9 6 4 3.1Z" />
+    </svg>
+  </span>
+);
+
+const ModeratorBadge = () => (
+  <span
+    className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#5f9dff]"
+    title="Moderator"
+  >
+    <Wrench className="h-2.5 w-2.5 text-white" strokeWidth={2.5} />
+  </span>
+);
+
+const MemberBadge = () => (
+  <span
+    className="inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#2ba640]"
+    title="Member"
+  >
+    <svg viewBox="0 0 12 12" className="h-2.5 w-2.5 fill-white" aria-hidden="true">
+      <path d="M6 10 2 6.4C1 5.4 1 3.8 2.1 2.8A2.8 2.8 0 0 1 6 3.3a2.8 2.8 0 0 1 3.9-.5c1 1 1 2.6 0 3.6L6 10Z" />
+    </svg>
+  </span>
+);
 
 const formatChatMessage = (text: string | undefined) => {
   if (!text) return null;
@@ -32,8 +66,9 @@ const formatChatMessage = (text: string | undefined) => {
             src={emotUrl}
             alt={emotCode}
             title={emotCode}
-            className="inline-block h-5 w-5 align-text-bottom mx-0.5 rounded-sm object-contain"
+            className="inline-block h-[1.25em] w-[1.25em] align-[-0.2em] mx-[1px] object-contain"
             loading="lazy"
+            decoding="async"
           />
         );
       }
@@ -84,22 +119,22 @@ export default function ChatMessageItem({ msg, isFullscreen = false }: ChatMessa
 
   let nameColor = "text-muted-foreground";
   let textColor = "text-foreground";
-  let BadgeIcon = null;
+  let badgeIcon: JSX.Element | null = null;
 
   // Default background untuk chat biasa
   let customBg = "bg-card border-border";
   let messageContent = null;
 
   if (isChatOwner) {
-    nameColor = "text-yellow-500";
-    BadgeIcon = <Crown className="h-3 w-3 text-yellow-500" fill="currentColor" />;
+    nameColor = "text-[#ffd600]";
+    badgeIcon = <OwnerBadge />;
   } else if (isChatModerator) {
-    nameColor = "text-blue-500";
-    BadgeIcon = <Wrench className="h-3 w-3 text-blue-500" />;
+    nameColor = "text-[#5f9dff]";
+    badgeIcon = <ModeratorBadge />;
   } else if (isChatSponsor) {
-    nameColor = "text-green-500 font-bold";
+    nameColor = "text-[#2ba640] font-semibold";
     textColor = "text-foreground";
-    BadgeIcon = <Star className="h-3 w-3 text-green-500" fill="currentColor" />;
+    badgeIcon = <MemberBadge />;
   }
 
   if (type === 'superChatEvent') {
@@ -203,7 +238,7 @@ export default function ChatMessageItem({ msg, isFullscreen = false }: ChatMessa
           <span className={`${isFullscreen ? 'text-[10px]' : 'text-[10px] sm:text-[11px] md:text-[12px]'} font-bold tracking-tight ${nameColor}`}>
             {displayName}
           </span>
-          {BadgeIcon}
+          {badgeIcon}
         </div>
 
         {/* Render Konten Pesan */}
