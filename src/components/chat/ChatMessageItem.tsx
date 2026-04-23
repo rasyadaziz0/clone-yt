@@ -8,9 +8,18 @@ import { useGSAP } from '@gsap/react';
 import EMOT_LIST from '@/emot/emot';
 
 const BUBBLE_RADIUS = 'rounded-2xl';
-const normalizeEmotUrl = (url: string) => url.replace(/=w\d+-h\d+-c-k-nd$/i, '=s48');
-const emotMap = new Map(
-  EMOT_LIST.map((emot) => [String(emot.code).toLowerCase(), normalizeEmotUrl(String(emot.url))])
+const normalizeEmotUrl = (url: string) => url.replace(/=w\d+-h\d+-c-k-nd$/i, '=s50');
+const emotMap = new Map<string, { primaryUrl: string; fallbackUrl: string }>(
+  EMOT_LIST.map((emot) => {
+    const fallbackUrl = String(emot.url);
+    return [
+      String(emot.code).toLowerCase(),
+      {
+        primaryUrl: normalizeEmotUrl(fallbackUrl),
+        fallbackUrl
+      }
+    ];
+  })
 );
 
 interface ChatMessageItemProps {
@@ -57,18 +66,24 @@ const formatChatMessage = (text: string | undefined) => {
   return parts.map((part, i) => {
     if (part.startsWith(':') && part.endsWith(':')) {
       const emotCode = part.slice(1, -1);
-      const emotUrl = emotMap.get(emotCode.toLowerCase());
+      const emotSource = emotMap.get(emotCode.toLowerCase());
 
-      if (emotUrl) {
+      if (emotSource) {
         return (
           <img
             key={i}
-            src={emotUrl}
+            src={emotSource.primaryUrl}
             alt={emotCode}
             title={emotCode}
-            className="inline-block h-[1.25em] w-[1.25em] align-[-0.2em] mx-[1px] object-contain"
+            className="inline-block h-[1.9em] w-[1.9em] align-[-0.3em] mx-[2px] object-contain"
             loading="lazy"
             decoding="async"
+            onError={(e) => {
+              const target = e.currentTarget;
+              if (target.dataset.fallbackApplied === '1') return;
+              target.dataset.fallbackApplied = '1';
+              target.src = emotSource.fallbackUrl;
+            }}
           />
         );
       }
