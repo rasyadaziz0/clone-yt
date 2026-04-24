@@ -1,20 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerYouTubeAccessToken, youtubeAuthFetch } from '@/lib/youtube/server';
+import { z } from 'zod';
 
 const YOUTUBE_SEND_URL = 'https://www.googleapis.com/youtube/v3/liveChat/messages?part=snippet';
+const sendLiveChatSchema = z.object({
+  liveChatId: z.string().min(1, 'Invalid liveChatId'),
+  messageText: z.string().min(1, 'Invalid messageText').max(200, 'Message too long'),
+});
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
-  const liveChatId = body?.liveChatId;
-  const messageText = body?.messageText;
-
-  if (!liveChatId || typeof liveChatId !== 'string') {
-    return NextResponse.json({ error: 'Invalid liveChatId' }, { status: 400 });
+  const parsedBody = sendLiveChatSchema.safeParse(body);
+  if (!parsedBody.success) {
+    const issue = parsedBody.error.issues[0];
+    return NextResponse.json({ error: issue?.message ?? 'Invalid request payload' }, { status: 400 });
   }
-
-  if (!messageText || typeof messageText !== 'string') {
-    return NextResponse.json({ error: 'Invalid messageText' }, { status: 400 });
-  }
+  const { liveChatId, messageText } = parsedBody.data;
 
   const accessToken = await getServerYouTubeAccessToken();
   if (!accessToken) {
