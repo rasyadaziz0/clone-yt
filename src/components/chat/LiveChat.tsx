@@ -7,7 +7,6 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import AuthButton from '@/components/auth/AuthButton';
 import { User } from '@supabase/supabase-js';
 import { useLiveChat } from '@/hooks/useLiveChat';
-import { ytService } from '@/services/YouTubeService';
 import ChatMessageItem from './ChatMessageItem';
 
 interface LiveChatProps {
@@ -36,7 +35,6 @@ export default function LiveChat({ videoId, hostname, user, isFullscreen, onClos
   const scrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
-  const hasApiKey = ytService.getKey() !== '';
   const shouldShowYouTubeFallback = isQuotaExceeded && !!videoId && !!hostname;
   const fallbackChatUrl = `https://www.youtube.com/live_chat?v=${videoId}&embed_domain=${hostname}&dark_theme=1`;
 
@@ -153,7 +151,7 @@ export default function LiveChat({ videoId, hostname, user, isFullscreen, onClos
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-xs sm:text-sm font-bold tracking-tight text-foreground">
-                  {isReplay && !liveChatId ? "Belum Ada Riwayat Chat" : (hasApiKey ? "Chat Kosong" : "API Key Belum Diisi")}
+                  {isReplay && !liveChatId ? "Belum Ada Riwayat Chat" : "Chat Kosong"}
                 </h3>
                 <p className="text-[11px] sm:text-[12px] leading-relaxed text-muted-foreground max-w-[200px] sm:max-w-[250px] mx-auto">
                   {isReplay && !liveChatId ? "Jadilah yang pertama meninggalkan pesan di siaran ulang ini!" : "Belum ada pesan masuk."}

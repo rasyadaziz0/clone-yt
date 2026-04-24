@@ -70,8 +70,9 @@ export function useSendMessage(
             // Jangan tunggu API YouTube agar UI terasa instan.
             onSuccess?.();
 
-            // Kirim ke YouTube API (jika live dan ada token)
-            const accessToken = localStorage.getItem('google_access_token');
+            // Kirim ke YouTube API (jika live dan token OAuth tersedia di session)
+            const { data: sessionData } = await supabase.auth.getSession();
+            const accessToken = sessionData.session?.provider_token;
             if (liveChatId && accessToken) {
                 ytService
                     .sendMessage(liveChatId, parsedMessage.data, accessToken)

@@ -1,74 +1,23 @@
 export class YouTubeService {
-    private apiKeys: string[];
-    private currentKeyIndex: number = 0;
-    private exhaustedKeys: Set<string> = new Set();
     private baseUrl: string = 'https://www.googleapis.com/youtube/v3';
 
-    constructor() {
-        this.apiKeys = [
-            process.env.NEXT_PUBLIC_YOUTUBE_API_KEY1,
-            process.env.NEXT_PUBLIC_YOUTUBE_API_KEY2,
-            process.env.NEXT_PUBLIC_YOUTUBE_API_KEY3,
-            process.env.NEXT_PUBLIC_YOUTUBE_API_KEY4,
-            process.env.NEXT_PUBLIC_YOUTUBE_API_KEY5,
-            process.env.NEXT_PUBLIC_YOUTUBE_API_KEY6,
-        ].filter(Boolean) as string[];
-
-        if (this.apiKeys.length === 0) {
-            console.error("CRITICAL: Semua YouTube API Keys kosong! Harap isi .env");
-        } else {
-            console.log(`[YouTubeService] Berhasil memuat ${this.apiKeys.length} API Keys.`);
-        }
-    }
-
     public getKey(): string {
-        if (this.apiKeys.length === 0) return '';
-
-        let attempts = 0;
-        let key = '';
-
-        while (attempts < this.apiKeys.length) {
-            key = this.apiKeys[this.currentKeyIndex];
-            this.currentKeyIndex = (this.currentKeyIndex + 1) % this.apiKeys.length;
-
-            if (!this.exhaustedKeys.has(key)) {
-                return key;
-            }
-            attempts++;
-        }
-
-        // Jika semua key sudah exhausted, kembalikan key pertama sebagai fallback terakhir
-        // (atau bisa juga throw error di sini jikalau mau strict)
-        return this.apiKeys[0];
+        // API key dikelola penuh di server-side proxy.
+        return '__server_managed__';
     }
 
     public async fetchWithRetry(urlFactory: (key: string) => string, options?: RequestInit): Promise<Response> {
-        let attempts = 0;
-        const maxAttempts = Math.max(1, this.apiKeys.length);
+        const targetUrl = urlFactory('server-key');
+        const response = await fetch(`/api/youtube/proxy?url=${encodeURIComponent(targetUrl)}`, {
+            ...options,
+            method: options?.method ?? 'GET',
+        });
 
-        while (attempts < maxAttempts) {
-            const key = this.getKey() || process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';
-            const url = urlFactory(key);
-            const response = await fetch(url, options);
-
-            if (!response.ok) {
-                const clone = response.clone();
-                try {
-                    const errorData = await clone.json();
-                    if (response.status === 403 && errorData.error?.errors?.[0]?.reason === 'quotaExceeded') {
-                        console.warn(`[YouTubeService] Quota exceeded for key. Marking as exhausted and trying next key... (${attempts + 1}/${maxAttempts})`);
-                        this.exhaustedKeys.add(key);
-                        attempts++;
-                        continue;
-                    }
-                } catch (e) {
-                    // Mengabaikan error parsing JSON
-                }
-            }
-            return response; // Return response jika berhasil atau jika error bukan karena quota
+        if (response.status === 429) {
+            throw new Error("All YouTube API Keys have exceeded their quota!");
         }
 
-        throw new Error("All YouTube API Keys have exceeded their quota!");
+        return response;
     }
 
     // Mengambil Live Chat ID

@@ -10,14 +10,14 @@ CineView adalah bioskop web minimalis dengan performa tinggi yang dirancang untu
     - **Live Badge**: Indikator animasi berdenyut merah yang cerdas, hanya muncul pada konten siaran langsung.
     - **Manual Sync-to-Live**: Tombol "Liquid Crystal" khusus untuk mengejar titik terbaru siaran langsung jika terjadi keterlambatan transmisi.
 - **Cinema Mode Controls**: Kontrol yang menyembunyi otomatis (*auto-hide*) saat tidak digunakan untuk tampilan tanpa gangguan, dilengkapi efek "Cinema Glow" pada latar belakang untuk meningkatkan kontras.
-- **Real-time Firestore Config**: Halaman pengaturan khusus (`/setup`) untuk memperbarui URL video, judul, dan deskripsi secara instan tanpa perlu melakukan deployment ulang.
+- **Real-time Supabase Config**: Halaman pengaturan khusus (`/setup`) untuk memperbarui URL video dan metadata secara instan tanpa deployment ulang.
 
 ## 🛠️ Tech Stack
 
 - **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/) dengan teknik Glassmorphism kustom.
 - **Components**: [ShadCN UI](https://ui.shadcn.com/) & [Lucide Icons](https://lucide.dev/).
-- **Database**: [Firebase Firestore](https://firebase.google.com/docs/firestore) untuk sinkronisasi konfigurasi teater secara real-time.
+- **Backend/Data**: [Supabase](https://supabase.com/) untuk autentikasi, penyimpanan data, dan sinkronisasi realtime.
 - **Video Integration**: YouTube IFrame API dengan sistem *state-locking* kualitas video.
 
 ## 🚀 Panduan Instalasi Lokal
@@ -33,8 +33,8 @@ CineView adalah bioskop web minimalis dengan performa tinggi yang dirancang untu
    npm install
    ```
 
-3. **Konfigurasi Firebase**:
-   Pastikan Anda memiliki proyek Firebase yang aktif. Konfigurasi sudah tersedia di `src/firebase/config.ts`. Pastikan koleksi `settings` dengan dokumen `theater` sudah ada di Firestore Anda.
+3. **Konfigurasi Supabase**:
+   Buat file `.env` berdasarkan `.env.example`, lalu isi `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, dan `YOUTUBE_API_KEY1..6` (server-side).
 
 4. **Jalankan Server**:
    ```bash

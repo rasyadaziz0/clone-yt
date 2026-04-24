@@ -56,7 +56,6 @@ export default function AuthButton() {
       if (error) {
         throw error;
       }
-      localStorage.removeItem('google_access_token');
       router.push('/login');
     } catch (error: any) {
       toast.error("Gagal untuk keluar.");

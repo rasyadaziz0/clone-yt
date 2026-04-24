@@ -141,7 +141,6 @@ export default function SetupPage() {
                   onClick={async () => {
                     const { error } = await auth.signOut();
                     if (!error) {
-                      localStorage.removeItem('google_access_token');
                       router.push('/login');
                     }
                   }}

@@ -115,18 +115,10 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
         const fetchSubscriptionStatus = async () => {
             if (!videoData?.snippet?.channelId) return;
             
-            // Get fresh token from session
             const { data: sessionData } = await auth.getSession();
-            const providerToken = sessionData.session?.provider_token;
-            const localToken = localStorage.getItem('google_access_token');
-            
-            console.log('Debug - provider_token:', providerToken ? 'exists' : 'null');
-            console.log('Debug - localStorage token:', localToken ? 'exists' : 'null');
-            
-            let accessToken = providerToken || localToken;
+            const accessToken = sessionData.session?.provider_token;
             
             if (!accessToken) {
-                console.log('Debug: No access token available');
                 return;
             }
 
@@ -140,9 +132,7 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
                     }
                 );
                 
-                // Handle 401 - token expired
                 if (res.status === 401) {
-                    localStorage.removeItem('google_access_token');
                     toast.error("Silakan login ulang untuk mengakses fitur YouTube.");
                     return;
                 }
@@ -161,9 +151,8 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
     }, [videoData, auth]);
 
     const handleSubscribeToggle = async () => {
-        // Get fresh token from session
         const { data: sessionData } = await auth.getSession();
-        let accessToken = sessionData.session?.provider_token || localStorage.getItem('google_access_token');
+        const accessToken = sessionData.session?.provider_token;
         
         if (!accessToken) {
             toast.error("Kamu harus login untuk melakukan subscribe.");
@@ -189,7 +178,6 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
                     setIsSubscribed(false);
                     setSubscriptionId(null);
                 } else if (res.status === 401) {
-                    localStorage.removeItem('google_access_token');
                     throw new Error("Sesi berakhir, silakan login ulang.");
                 } else {
                     throw new Error("Gagal unsubscribe");
@@ -219,7 +207,6 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
                     setIsSubscribed(true);
                     setSubscriptionId(data.id);
                 } else if (res.status === 401) {
-                    localStorage.removeItem('google_access_token');
                     throw new Error("Sesi berakhir, silakan login ulang.");
                 } else {
                     throw new Error(data.error?.message || "Gagal subscribe");
