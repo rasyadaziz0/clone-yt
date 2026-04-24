@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { ytService } from '@/services/YouTubeService';
 import { useSupabaseClient, useUser } from '@/supabase/provider';
 
 const chatMessageSchema = z.string()
@@ -70,15 +69,25 @@ export function useSendMessage(
             // Jangan tunggu API YouTube agar UI terasa instan.
             onSuccess?.();
 
-            // Kirim ke YouTube API (jika live dan token OAuth tersedia di session)
-            const { data: sessionData } = await supabase.auth.getSession();
-            const accessToken = sessionData.session?.provider_token;
-            if (liveChatId && accessToken) {
-                ytService
-                    .sendMessage(liveChatId, parsedMessage.data, accessToken)
-                    .catch((ytError) => {
-                        console.error("Gagal meneruskan ke YouTube Live Chat:", ytError);
-                    });
+            // Kirim ke YouTube API lewat server supaya token tidak tersentuh client.
+            if (liveChatId) {
+                fetch('/api/youtube/live-chat/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        liveChatId,
+                        messageText: parsedMessage.data,
+                    }),
+                }).then(async (res) => {
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        throw new Error(errData?.error || 'Gagal kirim chat ke YouTube');
+                    }
+                }).catch((ytError) => {
+                    console.error("Gagal meneruskan ke YouTube Live Chat:", ytError);
+                });
             }
         } catch (error) {
             console.error("Error mengirim pesan:", error);

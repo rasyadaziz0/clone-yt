@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
-import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import type { SupabaseClient } from './client';
 import { getSupabaseClient } from './client';
 import { SupabaseErrorListener } from '@/components/SupabaseErrorListener';
@@ -63,24 +63,32 @@ export const SupabaseProvider: React.FC<SupabaseProviderProps> = ({ children }) 
 
     setUserAuthState(prev => ({ ...prev, isUserLoading: true, userError: null }));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: AuthChangeEvent, session: Session | null) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async () => {
+      const { data, error } = await supabase.auth.getUser();
+      if (error) {
         setUserAuthState({
-          user: session?.user ?? null,
-          session: session,
+          user: null,
+          session: null,
           isUserLoading: false,
-          userError: null,
+          userError: error,
         });
+        return;
       }
-    );
+      setUserAuthState({
+        user: data.user ?? null,
+        session: null,
+        isUserLoading: false,
+        userError: null,
+      });
+    });
 
-    supabase.auth.getSession().then(({ data: { session }, error }: { data: { session: Session | null }, error: Error | null }) => {
+    supabase.auth.getUser().then(({ data, error }: { data: { user: User | null }, error: Error | null }) => {
       if (error) {
         setUserAuthState({ user: null, session: null, isUserLoading: false, userError: error });
       } else {
         setUserAuthState({
-          user: session?.user ?? null,
-          session: session,
+          user: data.user ?? null,
+          session: null,
           isUserLoading: false,
           userError: null,
         });

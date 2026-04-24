@@ -33,21 +33,21 @@ function AuthCallbackContent() {
         }
       }
 
-      // Check session after exchange
-      const { data, error: sessionError } = await supabase.auth.getSession();
+      // Ambil user saja (tanpa mengekspos provider token di client)
+      const { data, error: userFetchError } = await supabase.auth.getUser();
 
-      if (sessionError) {
-        console.error('Auth callback error:', sessionError);
+      if (userFetchError) {
+        console.error('Auth callback error:', userFetchError);
         router.push('/login?error=auth_callback_failed');
         return;
       }
 
-      if (data.session) {
+      if (data.user) {
         // Cek apakah user sudah punya video
         const { data: userData, error: userError } = await supabase
           .from('users')
           .select('youtube_video_id')
-          .eq('id', data.session.user.id)
+          .eq('id', data.user.id)
           .single();
 
         if (userError || !userData?.youtube_video_id) {

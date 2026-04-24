@@ -6,7 +6,6 @@ import { ThumbsUp, Eye, Check, Bell, Youtube, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useYoutubeViewers } from '@/hooks/useYoutubeViewers';
-import { useSupabase } from '@/supabase';
 import { LiveAnalyticsChart } from './LiveAnalyticsChart';
 import DOMPurify from 'dompurify';
 import { ytService } from '@/services/YouTubeService';
@@ -44,7 +43,6 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
     const [subscriptionId, setSubscriptionId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [timeframe, setTimeframe] = useState<string>('30m');
-    const { auth } = useSupabase();
     const { history } = useYoutubeViewers(videoId);
 
     const getFilteredHistory = () => {
@@ -114,33 +112,20 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
     useEffect(() => {
         const fetchSubscriptionStatus = async () => {
             if (!videoData?.snippet?.channelId) return;
-            
-            const { data: sessionData } = await auth.getSession();
-            const accessToken = sessionData.session?.provider_token;
-            
-            if (!accessToken) {
-                return;
-            }
 
             try {
-                const res = await fetch(
-                    `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&forChannelId=${videoData.snippet.channelId}`,
-                    {
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                        },
-                    }
-                );
+                const res = await fetch(`/api/youtube/subscriptions?channelId=${encodeURIComponent(videoData.snippet.channelId)}`);
                 
                 if (res.status === 401) {
-                    toast.error("Silakan login ulang untuk mengakses fitur YouTube.");
+                    setIsSubscribed(false);
+                    setSubscriptionId(null);
                     return;
                 }
                 
                 const data = await res.json();
-                if (data.items && data.items.length > 0) {
-                    setIsSubscribed(true);
-                    setSubscriptionId(data.items[0].id);
+                if (res.ok) {
+                    setIsSubscribed(!!data.isSubscribed);
+                    setSubscriptionId(data.subscriptionId || null);
                 }
             } catch (error) {
                 console.error("Error fetching subscription status:", error);
@@ -148,31 +133,17 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
         };
 
         fetchSubscriptionStatus();
-    }, [videoData, auth]);
+    }, [videoData]);
 
     const handleSubscribeToggle = async () => {
-        const { data: sessionData } = await auth.getSession();
-        const accessToken = sessionData.session?.provider_token;
-        
-        if (!accessToken) {
-            toast.error("Kamu harus login untuk melakukan subscribe.");
-            return;
-        }
-
         if (!videoData?.snippet?.channelId) return;
 
         setIsSubmitting(true);
         try {
             if (isSubscribed && subscriptionId) {
-                const res = await fetch(
-                    `https://www.googleapis.com/youtube/v3/subscriptions?id=${subscriptionId}`,
-                    {
-                        method: 'DELETE',
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                        },
-                    }
-                );
+                const res = await fetch(`/api/youtube/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+                    method: 'DELETE',
+                });
 
                 if (res.ok || res.status === 204) {
                     setIsSubscribed(false);
@@ -183,24 +154,13 @@ export default function VideoInfo({ videoId }: VideoInfoProps) {
                     throw new Error("Gagal unsubscribe");
                 }
             } else {
-                const res = await fetch(
-                    `https://www.googleapis.com/youtube/v3/subscriptions?part=snippet`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            Authorization: `Bearer ${accessToken}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            snippet: {
-                                resourceId: {
-                                    kind: "youtube#channel",
-                                    channelId: videoData.snippet.channelId
-                                }
-                            }
-                        })
-                    }
-                );
+                const res = await fetch(`/api/youtube/subscriptions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ channelId: videoData.snippet.channelId }),
+                });
 
                 const data = await res.json();
                 if (res.ok && data.id) {
