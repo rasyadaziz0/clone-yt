@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 
@@ -11,8 +10,7 @@ interface UseUserVideoReturn {
 
 export function useUserVideo(): UseUserVideoReturn {
   const supabase = createClient();
-  const router = useRouter();
-  
+
   const [user, setUser] = useState<User | null>(null);
   const [videoId, setVideoId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,40 +34,42 @@ export function useUserVideo(): UseUserVideoReturn {
   useEffect(() => {
     const fetchUserVideo = async () => {
       setIsLoading(true);
-      
-      // 1. Dapatkan user yang sedang login
-      const { data: { user } } = await supabase.auth.getUser();
 
-      if (!user) {
-        // Jika belum login, redirect ke login
-        router.push('/login');
-        return;
-      }
+      try {
+        // 1. Dapatkan user yang sedang login
+        const { data: { user } } = await supabase.auth.getUser();
 
-      // 2. Ambil data youtube_video_id dari tabel 'users'
-      const { data, error } = await supabase
-        .from('users')
-        .select('youtube_video_id')
-        .eq('id', user.id)
-        .single();
+        if (!user) {
+          window.location.replace('/login');
+          return;
+        }
 
-      if (error) {
-        console.error('Error fetching user profile:', error);
-      } 
-      
-      // 3. Jika user punya video, tampilkan. Jika tidak, arahkan ke /setup
-      if (data && data.youtube_video_id) {
-        setVideoId(data.youtube_video_id);
+        // 2. Ambil data youtube_video_id dari tabel 'users'
+        const { data, error } = await supabase
+          .from('users')
+          .select('youtube_video_id')
+          .eq('id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching user profile:', error);
+        }
+
+        // 3. Jika user punya video, tampilkan. Jika tidak, arahkan ke /setup
+        if (data?.youtube_video_id) {
+          setVideoId(data.youtube_video_id);
+        } else {
+          window.location.replace('/setup');
+          return;
+        }
+      } finally {
+        // Always clear loading — even on error, so the screen never freezes
         setIsLoading(false);
-      } else {
-        // Redirect ke setup jika belum punya video
-        router.push('/setup');
-        return; // Stop execution, jangan setIsLoading(false)
       }
     };
 
     fetchUserVideo();
-  }, [supabase, router]);
+  }, [supabase]);
 
   return { user, videoId, isLoading };
 }
