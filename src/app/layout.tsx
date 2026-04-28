@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/sonner';
 import { SupabaseClientProvider } from '@/supabase';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: 'CineView',
@@ -25,6 +26,7 @@ export default function RootLayout({
           {children}
           <Toaster />
         </SupabaseClientProvider>
+        <Analytics />
       </body>
     </html>
   );
