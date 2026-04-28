@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useAuth, useUser } from '@/supabase';
+import { resetClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -14,13 +15,13 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LogIn, LogOut, User as UserIcon, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
+
 
 export default function AuthButton() {
   const auth = useAuth();
-  const router = useRouter();
   const { user, isUserLoading } = useUser();
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogin = async () => {
     if (isLoggingIn) return;
@@ -51,15 +52,18 @@ export default function AuthButton() {
   };
 
   const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
     try {
-      const { error } = await auth.signOut();
-      if (error) {
-        throw error;
-      }
-      router.push('/login');
-    } catch (error: any) {
-      toast.error("Gagal untuk keluar.");
+      await Promise.race([
+        auth.signOut(),
+        new Promise<void>(resolve => setTimeout(resolve, 3000)),
+      ]);
+    } catch {
+      // ignore
     }
+    resetClient();
+    window.location.replace('/login');
   };
 
   if (isUserLoading) {
@@ -108,9 +112,15 @@ export default function AuthButton() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-border" />
-        <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive cursor-pointer rounded-lg p-3 text-xs hover:bg-destructive/10">
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Sign out</span>
+        <DropdownMenuItem
+          onClick={handleLogout}
+          disabled={isLoggingOut}
+          className="text-destructive focus:text-destructive cursor-pointer rounded-lg p-3 text-xs hover:bg-destructive/10 disabled:opacity-50 disabled:cursor-wait"
+        >
+          {isLoggingOut
+            ? <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            : <LogOut className="mr-2 h-4 w-4" />}
+          <span>{isLoggingOut ? 'Keluar...' : 'Sign out'}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

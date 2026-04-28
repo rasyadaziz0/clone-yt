@@ -1,8 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
+// ── Constants ──────────────────────────────────────────────────────────────
 const YOUTUBE_ORIGIN = 'www.googleapis.com';
 const YOUTUBE_PATH_PREFIX = '/youtube/v3/';
 
+// Rate-limit: max 30 requests per IP per minute (sliding window)
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 30;
+
+// ── In-memory rate-limit store (per-instance; sufficient for Edge/Node) ────
+const rateLimitStore = new Map<string, { count: number; windowStart: number }>();
+
+function getClientIp(req: NextRequest): string {
+  return (
+    req.headers.get('x-forwarded-for')?.split(',')[0].trim() ??
+    req.headers.get('x-real-ip') ??
+    'unknown'
+  );
+}
+
+function isRateLimited(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+
+  if (!entry || now - entry.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    rateLimitStore.set(ip, { count: 1, windowStart: now });
+    return false;
+  }
+
+  if (entry.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return true;
+  }
+
+  entry.count += 1;
+  return false;
+}
+
+// ── API key pool ──────────────────────────────────────────────────────────
 const apiKeys = [
   process.env.YOUTUBE_API_KEY1,
   process.env.YOUTUBE_API_KEY2,
@@ -19,7 +54,31 @@ function isQuotaExceeded(status: number, body: unknown): boolean {
   return maybeError?.errors?.some((item) => item.reason === 'quotaExceeded') ?? false;
 }
 
+// ── Route handler ─────────────────────────────────────────────────────────
 export async function GET(req: NextRequest) {
+  // ── 1. Authentication: require a valid Supabase session ────────────────
+  const supabase = await createServerSupabaseClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (!session) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // ── 2. Rate limiting: 30 req / IP / minute ─────────────────────────────
+  const ip = getClientIp(req);
+  if (isRateLimited(ip)) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please slow down.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.ceil(RATE_LIMIT_WINDOW_MS / 1000)),
+        },
+      }
+    );
+  }
+
+  // ── 3. Input validation ────────────────────────────────────────────────
   const target = req.nextUrl.searchParams.get('url');
 
   if (!target) {
@@ -37,12 +96,19 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid url query parameter' }, { status: 400 });
   }
 
-  if (upstreamUrl.hostname !== YOUTUBE_ORIGIN || !upstreamUrl.pathname.startsWith(YOUTUBE_PATH_PREFIX)) {
+  // Only allow requests to the YouTube Data API v3
+  if (
+    upstreamUrl.hostname !== YOUTUBE_ORIGIN ||
+    !upstreamUrl.pathname.startsWith(YOUTUBE_PATH_PREFIX)
+  ) {
     return NextResponse.json({ error: 'Unsupported upstream URL' }, { status: 400 });
   }
 
+  // Strip any client-supplied API key — server keys are injected below
+  upstreamUrl.searchParams.delete('key');
+
+  // ── 4. Key-rotation & upstream fetch ───────────────────────────────────
   for (const key of apiKeys) {
-    upstreamUrl.searchParams.delete('key');
     upstreamUrl.searchParams.set('key', key);
 
     const upstreamRes = await fetch(upstreamUrl.toString(), {
@@ -66,7 +132,10 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
-      return NextResponse.json(parsed ?? { error: 'YouTube request failed' }, { status: upstreamRes.status });
+      return NextResponse.json(
+        parsed ?? { error: 'YouTube request failed' },
+        { status: upstreamRes.status }
+      );
     }
 
     const data = await upstreamRes.json();

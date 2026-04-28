@@ -13,8 +13,16 @@ export class YouTubeService {
             method: options?.method ?? 'GET',
         });
 
+        if (response.status === 401) {
+            throw new Error('YOUTUBE_PROXY_UNAUTHORIZED');
+        }
+
         if (response.status === 429) {
-            throw new Error("All YouTube API Keys have exceeded their quota!");
+            throw new Error('YOUTUBE_QUOTA_EXCEEDED');
+        }
+
+        if (!response.ok) {
+            throw new Error(`YOUTUBE_PROXY_ERROR:${response.status}`);
         }
 
         return response;
@@ -23,7 +31,7 @@ export class YouTubeService {
     // Mengambil Live Chat ID
     async getLiveChatId(videoId: string): Promise<{ liveChatId: string | null, isReplay: boolean }> {
         const res = await this.fetchWithRetry((key) => `${this.baseUrl}/videos?part=liveStreamingDetails&id=${videoId}&key=${key}`);
-        if (!res.ok) throw new Error("Failed to fetch video details");
+        // fetchWithRetry already throws on non-ok responses
 
         const data = await res.json();
         if (!data.items || data.items.length === 0) return { liveChatId: null, isReplay: false };
@@ -41,56 +49,15 @@ export class YouTubeService {
     // Mengambil Pesan Chat
     async getMessages(liveChatId: string): Promise<any[]> {
         const res = await this.fetchWithRetry((key) => `${this.baseUrl}/liveChat/messages?liveChatId=${liveChatId}&part=snippet,authorDetails&key=${key}`);
-        if (!res.ok) throw new Error("Failed to fetch messages");
+        // fetchWithRetry already throws on non-ok responses
 
         const data = await res.json();
         return data.items || [];
     }
 
-    // Mengirim Pesan Chat
-    async sendMessage(liveChatId: string, messageText: string, accessToken: string): Promise<void> {
-        const response = await fetch(`${this.baseUrl}/liveChat/messages?part=snippet`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                snippet: {
-                    liveChatId: liveChatId,
-                    type: 'textMessageEvent',
-                    textMessageDetails: { messageText },
-                },
-            }),
-        });
-
-        if (!response.ok) {
-            let parsedBody: any = null;
-            let rawBody = '';
-
-            try {
-                rawBody = await response.text();
-                parsedBody = rawBody ? JSON.parse(rawBody) : null;
-            } catch {
-                parsedBody = null;
-            }
-
-            const errorMessage =
-                parsedBody?.error?.message ||
-                (rawBody && rawBody.trim().length > 0 ? rawBody : null) ||
-                `HTTP ${response.status} ${response.statusText}`;
-
-            console.error("Detail Error YouTube API:", {
-                status: response.status,
-                statusText: response.statusText,
-                url: `${this.baseUrl}/liveChat/messages?part=snippet`,
-                body: parsedBody ?? rawBody ?? '(empty body)'
-            });
-
-            throw new Error(`Gagal mengirim pesan ke YouTube: ${errorMessage}`);
-        }
-    }
+    // Note: sendMessage is handled server-side via /api/youtube/live-chat/send
+    // (see useSendMessage.ts). Direct client-side YouTube write calls are intentionally
+    // removed to keep OAuth tokens off the client.
 }
 
 // Export single instance (Singleton pattern)

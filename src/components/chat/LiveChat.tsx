@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageSquare, ExternalLink, Send, User as UserIcon, MessageSquareOff, ArrowDown, X } from 'lucide-react';
+import { MessageSquare, ExternalLink, Send, User as UserIcon, MessageSquareOff, ArrowDown, X, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import AuthButton from '@/components/auth/AuthButton';
@@ -28,6 +28,7 @@ export default function LiveChat({ videoId, hostname, user, isFullscreen, onClos
     isSending,
     isReplay,
     isLoading,
+    error,
     isQuotaExceeded,
     handleSendMessage
   } = useLiveChat(videoId);
@@ -143,6 +144,25 @@ export default function LiveChat({ videoId, hostname, user, isFullscreen, onClos
           {isLoading ? (
             <div className="h-full flex items-center justify-center text-xs text-muted-foreground uppercase tracking-widest text-center">
               Memuat Obrolan...
+            </div>
+          ) : error ? (
+            <div className="h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-3">
+              <div className="bg-red-500/10 p-3 sm:p-4 rounded-full">
+                <AlertCircle className="h-8 w-8 sm:h-10 sm:w-10 text-red-400" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-xs sm:text-sm font-bold tracking-tight text-foreground">Gagal Memuat Chat</h3>
+                <p className="text-[11px] sm:text-[12px] leading-relaxed text-muted-foreground max-w-[220px] sm:max-w-[260px] mx-auto">
+                  {error}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="text-[10px] font-bold uppercase tracking-widest text-red-400 hover:text-red-300 transition-colors"
+              >
+                Refresh Halaman
+              </button>
             </div>
           ) : messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-3 sm:space-y-4">

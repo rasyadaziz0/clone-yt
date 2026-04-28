@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser, useSupabaseClient, useAuth } from '@/supabase';
 import { getYouTubeId } from '@/lib/utils';
+import { resetClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,6 +25,7 @@ export default function SetupPage() {
 
   const [url, setUrl] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!isUserLoading && !user) {
@@ -68,7 +70,7 @@ export default function SetupPage() {
         throw error;
       }
 
-      router.push('/');
+      window.location.replace('/');
 
     } catch (error: any) {
       console.error("Error saving video ID:", error);
@@ -137,15 +139,26 @@ export default function SetupPage() {
                   type="button"
                   variant="outline"
                   size="icon"
-                  className="h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 border-white/10 rounded-lg sm:rounded-xl"
+                  disabled={isLoggingOut}
+                  className="h-9 w-9 sm:h-10 sm:w-10 md:h-12 md:w-12 border-white/10 rounded-lg sm:rounded-xl disabled:opacity-50 disabled:cursor-wait"
                   onClick={async () => {
-                    const { error } = await auth.signOut();
-                    if (!error) {
-                      router.push('/login');
+                    if (isLoggingOut) return;
+                    setIsLoggingOut(true);
+                    try {
+                      await Promise.race([
+                        auth.signOut(),
+                        new Promise<void>(resolve => setTimeout(resolve, 3000)),
+                      ]);
+                    } catch {
+                      // ignore
                     }
+                    resetClient();
+                    window.location.replace('/login');
                   }}
                 >
-                  <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-destructive" />
+                  {isLoggingOut
+                    ? <Loader2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 animate-spin text-destructive" />
+                    : <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4 md:h-5 md:w-5 text-destructive" />}
                 </Button>
               </div>
             </form>

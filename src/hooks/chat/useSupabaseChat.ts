@@ -28,6 +28,7 @@ export interface UseSupabaseChatReturn {
     isReplay: boolean;
     isLoading: boolean;
     isQuotaExceeded: boolean;
+    error: string | null;
     chatHistory: ChatMessage[];
     lastSeenMessageIds: Set<string>;
     addToQueue: (msg: ChatMessage) => void;
@@ -43,6 +44,7 @@ export function useSupabaseChat(
     const [isReplayState, setIsReplayState] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isQuotaExceeded, setIsQuotaExceeded] = useState(false);
+    const [error, setError] = useState<string | null>(null);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
 
     const supabase = useSupabaseClient();
@@ -109,6 +111,7 @@ export function useSupabaseChat(
 
         const initChat = async () => {
             setIsLoading(true);
+            setError(null);
             try {
                 // Fetch status chat YouTube
                 const { liveChatId: id, isReplay: replayStatus } = await ytService.getLiveChatId(videoId);
@@ -119,14 +122,14 @@ export function useSupabaseChat(
                 }
 
                 // Fetch History Chat dari Supabase (SSOT)
-                const { data: history, error } = await supabase
+                const { data: history, error: dbError } = await supabase
                     .from('chat_messages')
                     .select('*')
                     .eq('video_id', videoId)
                     .order('video_timestamp', { ascending: true });
 
-                if (error) {
-                    console.error("Error fetching chat history dari Supabase:", error);
+                if (dbError) {
+                    console.error("Error fetching chat history dari Supabase:", dbError);
                 } else if (history && isMounted) {
                     const adaptedHistory = history.map(adaptDbMessage);
                     
@@ -137,12 +140,21 @@ export function useSupabaseChat(
                     // Tandai semua ID sebagai sudah dilihat
                     adaptedHistory.forEach(msg => lastSeenMessageIds.current.add(msg.id));
                 }
-            } catch (error) {
-                const errMessage = error instanceof Error ? error.message : String(error);
-                if (isMounted && errMessage.includes('All YouTube API Keys have exceeded their quota')) {
-                    setIsQuotaExceeded(true);
+            } catch (err) {
+                const errMessage = err instanceof Error ? err.message : String(err);
+
+                if (errMessage === 'YOUTUBE_PROXY_UNAUTHORIZED') {
+                    if (isMounted) setError('Sesi kamu habis. Silakan login ulang untuk melihat chat.');
+                } else if (errMessage === 'YOUTUBE_QUOTA_EXCEEDED') {
+                    if (isMounted) {
+                        setIsQuotaExceeded(true);
+                        setError('Kuota YouTube API habis. Chat dialihkan ke fallback.');
+                    }
+                } else {
+                    if (isMounted) setError('Gagal memuat chat. Coba refresh halaman.');
                 }
-                console.error("Error inisialisasi live chat:", error);
+
+                console.error("Error inisialisasi live chat:", err);
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -198,6 +210,7 @@ export function useSupabaseChat(
         isReplay: isReplayState,
         isLoading,
         isQuotaExceeded,
+        error,
         chatHistory,
         lastSeenMessageIds: lastSeenMessageIds.current,
         addToQueue,

@@ -1,25 +1,31 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
 import { useUser, useSupabaseClient } from '@/supabase';
 import AuthButton from '@/components/auth/AuthButton';
 import { Clapperboard, ShieldCheck, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function LoginPage() {
-  const router = useRouter();
   const { user, isUserLoading } = useUser();
   const supabase = useSupabaseClient();
   const [isCheckingVideo, setIsCheckingVideo] = useState(false);
+  // Track whether this is the initial mount — avoids reacting to a stale
+  // session that lingers briefly right after logout.
+  const didMountRef = useRef(false);
 
   useEffect(() => {
-    // Jika user sudah login, cek apakah sudah punya video
+    // On the very first render, give the signOut a moment to clear the cookie
+    // before we decide whether to redirect.
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      return;
+    }
+
     if (!isUserLoading && user) {
       const checkUserVideo = async () => {
         setIsCheckingVideo(true);
-        
-        // Cek apakah user sudah punya video di tabel users
+
         const { data, error } = await supabase
           .from('users')
           .select('youtube_video_id')
@@ -27,19 +33,17 @@ export default function LoginPage() {
           .single();
 
         if (error || !data?.youtube_video_id) {
-          // Belum punya video, arahkan ke setup
-          router.replace('/setup');
+          window.location.replace('/setup');
         } else {
-          // Sudah punya video, arahkan ke main page
-          router.replace('/');
+          window.location.replace('/');
         }
-        
+
         setIsCheckingVideo(false);
       };
 
       checkUserVideo();
     }
-  }, [user, isUserLoading, router, supabase]);
+  }, [user, isUserLoading, supabase]);
 
   if (isUserLoading || isCheckingVideo) {
     return (
@@ -54,7 +58,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4 sm:p-6 relative overflow-hidden">
       {/* Decorative Glow */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] sm:w-[400px] sm:h-[400px] md:w-[500px] md:h-[500px] bg-primary/20 blur-[80px] sm:blur-[100px] md:blur-[120px] rounded-full pointer-events-none" />
-      
+
       <div className="z-10 w-full max-w-md space-y-6 sm:space-y-8 text-center">
         <div className="flex flex-col items-center gap-3 sm:gap-4">
           <div className="rounded-xl sm:rounded-2xl bg-primary p-3 sm:p-4 shadow-2xl shadow-primary/40 rotate-3">
@@ -75,7 +79,7 @@ export default function LoginPage() {
               <ShieldCheck className="h-3 w-3" />
               Secure Authentication
             </div>
-            
+
             <div className="w-full pt-2">
               <AuthButton />
             </div>
@@ -86,9 +90,9 @@ export default function LoginPage() {
           </CardContent>
         </Card>
       </div>
-      
+
       <footer className="absolute bottom-6 sm:bottom-8 text-[8px] sm:text-[9px] font-black uppercase tracking-[0.4em] sm:tracking-[0.5em] text-muted-foreground/30">
-        &copy; 2024 CineView Labs &bull; Professional UI
+        &copy; 2026 CineView Labs &bull;
       </footer>
     </div>
   );

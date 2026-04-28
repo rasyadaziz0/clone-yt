@@ -29,6 +29,7 @@ export function useLiveChat(videoId: string) {
         liveChatId,
         isReplay,
         isLoading,
+        error,
         chatHistory,
         lastSeenMessageIds: lastSeenFromSupabase
     } = useSupabaseChat(videoId, isReplayRef.current, handleNewMessageFromRealtime);
@@ -106,6 +107,7 @@ export function useLiveChat(videoId: string) {
         isSending,
         isReplay,
         isLoading,
+        error,
         isQuotaExceeded,
         handleSendMessage,
         currentVideoTime: currentVideoTimeRef.current
